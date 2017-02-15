@@ -1,0 +1,21 @@
+{
+    "name"          : "node-red-contrib-prolights",
+    "version"       : "0.0.1",
+    "description"   : "Node-RED node that compose input for Artnet node to control Prolights lamps",
+	"repository" : {
+        "type":"git",
+        "url":"https://github.com/gunnebo-ab/node-red-contrib-prolights"
+    },
+    "license": "MIT",
+    "keywords": [ "node-red", "prolights", "artnet", "dmx", "light" ],
+    "node-red"      : {
+        "nodes"     : {
+            "prolights": "node-red-contrib-prolights.js"
+        }
+    },
+    "author": {
+        "name": "Gunnebo AB",
+		"email": "software.support@gunnebo.com",
+        "url": "http://gunnebo.com"
+    }
+}

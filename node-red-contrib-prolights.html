@@ -1,0 +1,429 @@
+<script type="text/javascript">
+    function validateChannelValue(v) {
+        return !isNaN(v) && parseInt(v) >= -1 && parseInt(v) <= 255;
+    }
+
+    function validatePositiveValue(v) {
+        return !isNaN(v) && parseInt(v) >= 0;
+    }
+    RED.nodes.registerType('prolights out',{
+        category: 'output',
+        color: '#a6bbcf',
+        defaults: {
+            name: {value: ""},
+            data_source: {value: "configuration"},
+
+			device_type:{value:"LUMIPAR12UTRI"},
+
+            address_start:{value:1, validate:function(v) { return parseInt(v) > 0 && parseInt(v) <= 512 }},
+            channels:{value:"3channels", required:true},
+
+            red:{value:-1, validate:validateChannelValue},
+            green:{value:-1, validate:validateChannelValue},
+            blue:{value:-1, validate:validateChannelValue},
+
+            white:{value:-1, validate:validateChannelValue},
+
+            amber:{value:-1, validate:validateChannelValue},
+            cold_white:{value:-1, validate:validateChannelValue},
+            warm_white:{value:-1, validate:validateChannelValue},
+
+            pan:{value:-1, validate:validateChannelValue},
+            tilt:{value:-1, validate:validateChannelValue},
+            pan_fine:{value:-1, validate:validateChannelValue},
+            tilt_fine:{value:-1, validate:validateChannelValue},
+            pan_tilt_speed:{value:-1, validate:validateChannelValue},
+            special_function:{value:-1, validate:validateChannelValue},
+            shutter:{value:-1, validate:validateChannelValue},
+            color_function:{value:-1, validate:validateChannelValue},
+            zoom:{value:-1, validate:validateChannelValue},
+
+            color:{value:-1, validate:validateChannelValue},
+            strobe:{value:-1, validate:validateChannelValue},
+            program:{value:-1,validate:validateChannelValue},
+            dimmer:{value:-1, validate:validateChannelValue},
+            dimmer_speed:{value:-1, validate:validateChannelValue},
+            transition: {value: false},
+            duration:{value:0, required: false, validate:validatePositiveValue}
+        },
+        inputs:1,
+        outputs:1,
+        align: "right",
+        icon: "light.png",
+        label: function() {
+            return this.name || "prolights";
+        },
+        oneditprepare: function() {
+            var node = this;
+
+            var CHANNELS_BY_DEVICE = {
+                'LUMIPAR12UTRI': [
+                    {value: '3channels', name: '3 channels'},
+                    {value: '8channels', name: '8 channels'}],
+                'LUMIPAR12UQPRO': [
+                    {value: '4channels', name: '4 channels'},
+                    {value: '9channels', name: '9 channels'}],
+                'LUMIPAR12UAW': [
+                    {value: '3channels', name: '3 channels'},
+                    {value: '7channels', name: '7 channels'}],
+                'PIXIEWASH': [
+                    {value: '13channels', name: '13 channels'},
+                    {value: '16channels', name: '16 channels'}],
+                'LUMIPAR7UTRI': [
+                    {value: '3channels', name: '3 channels'},
+                    {value: '8channels', name: '8 channels'}]
+            };
+
+            $("#node-input-data_source").change(function(e) {
+                var source = $("#node-input-data_source").children("option:selected").val();
+                $("#node-input-parameter-channels")[source !== "payload" ? 'show' : 'hide']();
+                $("#node-input-parameter-device_type")[source !== "payload" ? 'show' : 'hide']();
+                $("#node-input-parameter-address_start")[source !== "payload" ? 'show' : 'hide']();
+                //$("#node-input-address_start").val(node.address_start);
+
+                $("#node-input-device_type").val(node.device_type);
+                $("#node-input-device_type").change();
+            });
+
+            function adjustChannels(device) {
+                if(device) {
+                    var types = CHANNELS_BY_DEVICE[device];
+                    var channels_select = document.getElementById('node-input-channels');
+                    channels_select.options.length = 0;
+                    var opt = null;
+                    for(var i = 0; i < types.length; i++) {
+                        opt = document.createElement("option");
+                        opt.value = types[i].value;
+                        opt.innerHTML = types[i].name;
+                        channels_select.appendChild(opt);
+                    }
+                }
+            }
+
+            $("#node-input-device_type").change(function(e) {
+                var device = $("#node-input-device_type").children("option:selected").val();
+                adjustChannels(device);
+                var deviceHasCurrentChannel = CHANNELS_BY_DEVICE[device].some(function (element) {
+					return element.value == node.channels;
+                });
+
+                if(!deviceHasCurrentChannel){
+                    node.channels = CHANNELS_BY_DEVICE[device][0].value;
+				}
+
+                $("#node-input-channels").val(node.channels);
+                $("#node-input-channels").change();
+            });
+
+            $("#node-input-channels").change(function(e) {
+                var source = $("#node-input-data_source").children("option:selected").val();
+                var channels = $("#node-input-channels").children("option:selected").val();
+                var device = $("#node-input-device_type").children("option:selected").val();
+
+                $("#node-input-parameter-block")[source !== "payload" ? 'show' : 'hide']();
+
+                <!-- show only for configuration -->
+                $("#node-input-parameter-pan")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-pan").val(node.pan);
+                $("#node-input-parameter-tilt")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-tilt").val(node.tilt);
+                $("#node-input-parameter-pan_fine")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-pan_fine").val(node.pan_fine);
+                $("#node-input-parameter-tilt_fine")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-tilt_fine").val(node.tilt_fine);
+                $("#node-input-parameter-pan_tilt_speed")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-pan_tilt_speed").val(node.pan_tilt_speed);
+                $("#node-input-parameter-special_function")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-special_function").val(node.special_function);
+                $("#node-input-parameter-shutter")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-shutter").val(node.shutter);
+                $("#node-input-parameter-color_function")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 && ["16channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-color_function").val(node.color_function);
+                $("#node-input-parameter-zoom")[source === "configuration" && ["PIXIEWASH"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-zoom").val(node.zoom);
+
+                $("#node-input-parameter-red")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-red").val(node.red);
+
+                $("#node-input-parameter-green")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-green").val(node.green);
+
+                $("#node-input-parameter-blue")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-blue").val(node.blue);
+
+                $("#node-input-parameter-white")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UQPRO"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-white").val(node.white);
+
+                $("#node-input-parameter-amber")[source === "configuration" && ["LUMIPAR12UAW"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-amber").val(node.amber);
+
+                $("#node-input-parameter-cold_white")[source === "configuration" && ["LUMIPAR12UAW"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-cold_white").val(node.cold_white);
+
+                $("#node-input-parameter-warm_white")[source === "configuration" && ["LUMIPAR12UAW"].indexOf(device) > -1 ? 'show' : 'hide']();
+                $("#node-input-warm_white").val(node.warm_white);
+
+                $("#node-input-parameter-color")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 && ["9channels", "8channels", "16channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-color").val(node.color);
+
+                $("#node-input-parameter-strobe")[source === "configuration" && ["LUMIPAR12UAW", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 && ["9channels", "8channels", "7channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-strobe").val(node.strobe);
+
+                $("#node-input-parameter-program")[source === "configuration" && ["LUMIPAR12UAW", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 && ["9channels", "8channels", "7channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-program").val(node.program);
+
+                $("#node-input-parameter-dimmer")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UAW", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 && ["9channels", "8channels", "7channels", "13channels", "16channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-dimmer").val(node.dimmer);
+
+                $("#node-input-parameter-dimmer_speed")[source === "configuration" && ["PIXIEWASH", "LUMIPAR12UAW", "LUMIPAR12UQPRO", "LUMIPAR12UTRI", "LUMIPAR7UTRI"].indexOf(device) > -1 && ["9channels", "8channels", "7channels", "16channels"].indexOf(channels) > -1 ? 'show' : 'hide']();
+                $("#node-input-dimmer_speed").val(node.dimmer_speed);
+            });
+
+            $("#node-input-transition").change(function(e){
+                var transitionEnabled = $("#node-input-transition").is(':checked');
+                $("#node-input-parameter-duration")[transitionEnabled ? 'show' : 'hide']();
+            });
+
+            $("#node-input-data_source").val(node.data_source);
+            $("#node-input-data_source").change();
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="prolights out">
+	<div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+     <div class="form-row">
+        <label for="node-input-data_source"><i class="icon-tag"></i> Data Source</label>
+        <select id="node-input-data_source">
+        	<option value="payload">from payload</option>
+			<option value="configuration">from Configuration</option>
+			<option value="configuration_helios">from Configuration and Helios function payload</option>
+			<option value="configuration_payload">from Configuration and Payload</option>
+		</select>
+    </div>
+
+    <div id="node-input-parameter-block">
+		<div class="form-row" id="node-input-parameter-device_type">
+			<label for="node-input-device_type"><i class="icon-tag"></i> Device Type</label>
+			<select id="node-input-device_type">
+				<option value="LUMIPAR12UTRI">LUMIPAR12UTRI</option>
+				<option value="LUMIPAR12UQPRO">LUMIPAR12UQPRO</option>
+				<option value="LUMIPAR12UAW">LUMIPAR12UAW</option>
+				<option value="PIXIEWASH">PIXIEWASH</option>
+				<option value="LUMIPAR7UTRI">LUMIPAR7UTRI</option>
+			</select>
+		</div>
+
+		<div class="form-row" id="node-input-parameter-address_start">
+			<label for="node-input-address_start"><i class="icon-tag"></i> Start Address</label>
+			<input type="text" id="node-input-address_start" placeholder="Start Address">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-channels">
+			<label for="node-input-channels"><i class="icon-tag"></i> Channels</label>
+			<select id="node-input-channels">
+			</select>
+		</div>
+
+		<div class="form-row" id="node-input-parameter-pan">
+			<label for="node-input-pan"><i class="icon-tag"></i> Pan</label>
+			<input type="text" id="node-input-pan" placeholder="Pan">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-pan_fine">
+			<label for="node-input-pan_fine"><i class="icon-tag"></i> Pan fine</label>
+			<input type="text" id="node-input-pan_fine" placeholder="Pan fine">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-tilt">
+			<label for="node-input-tilt"><i class="icon-tag"></i> Tilt</label>
+			<input type="text" id="node-input-tilt" placeholder="Tilt">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-tilt_fine">
+			<label for="node-input-tilt_fine"><i class="icon-tag"></i> Tilt fine</label>
+			<input type="text" id="node-input-tilt_fine" placeholder="Tilt fine">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-pan_tilt_speed">
+			<label for="node-input-pan_tilt_speed"><i class="icon-tag"></i> Pan/Tilt speed</label>
+			<input type="text" id="node-input-pan_tilt_speed" placeholder="Pan/Tilt speed">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-special_function">
+			<label for="node-input-special_function"><i class="icon-tag"></i> Special function</label>
+			<input type="text" id="node-input-special_function" placeholder="Special function">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-shutter">
+			<label for="node-input-shutter"><i class="icon-tag"></i> Shutter</label>
+			<input type="text" id="node-input-shutter" placeholder="Shutter">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-red">
+			<label for="node-input-red"><i class="icon-tag"></i> Red</label>
+			<input type="text" id="node-input-red" placeholder="Red">
+		</div>
+		<div class="form-row" id="node-input-parameter-green">
+			<label for="node-input-green"><i class="icon-tag"></i> Green</label>
+			<input type="text" id="node-input-green" placeholder="Green">
+		</div>
+		<div class="form-row" id="node-input-parameter-blue">
+			<label for="node-input-blue"><i class="icon-tag"></i> Blue</label>
+			<input type="text" id="node-input-blue" placeholder="Blue">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-white">
+			<label for="node-input-white"><i class="icon-tag"></i> White</label>
+			<input type="text" id="node-input-white" placeholder="White">
+		</div>
+
+		 <div class="form-row" id="node-input-parameter-color_function">
+			<label for="node-input-color_function"><i class="icon-tag"></i> Color Function</label>
+			<input type="text" id="node-input-color_function" placeholder="Color Function">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-amber">
+			<label for="node-input-amber"><i class="icon-tag"></i> Amber</label>
+			<input type="text" id="node-input-amber" placeholder="Amber">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-cold_white">
+			<label for="node-input-cold_white"><i class="icon-tag"></i> Cold white</label>
+			<input type="text" id="node-input-cold_white" placeholder="Cold white">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-warm_white">
+			<label for="node-input-warm_white"><i class="icon-tag"></i> Warm white</label>
+			<input type="text" id="node-input-warm_white" placeholder="Warm white">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-color">
+			<label for="node-input-color"><i class="icon-tag"></i> Color</label>
+			<input type="text" id="node-input-color" placeholder="Color">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-strobe">
+			<label for="node-input-strobe"><i class="icon-tag"></i> Stroboscope / Program speed / Sound sensitivity</label>
+			<input type="text" id="node-input-strobe" placeholder="Stroboscope / Program speed / Sound sensitivity">
+		</div>
+		<div class="form-row" id="node-input-parameter-program">
+			<label for="node-input-program"><i class="icon-tag"></i> Program</label>
+			<input type="text" id="node-input-program" placeholder="Program">
+		</div>
+		<div class="form-row" id="node-input-parameter-dimmer">
+			<label for="node-input-dimmer"><i class="icon-tag"></i> Dimmer</label>
+			<input type="text" id="node-input-dimmer" placeholder=" Dimmer">
+		</div>
+
+	    <div class="form-row" id="node-input-parameter-zoom">
+			<label for="node-input-zoom"><i class="icon-tag"></i> Zoom</label>
+			<input type="text" id="node-input-zoom" placeholder="Zoom">
+		</div>
+
+		<div class="form-row" id="node-input-parameter-dimmer_speed">
+			<label for="node-input-dimmer_speed"><i class="icon-tag"></i> Dimmer Speed</label>
+			<input type="text" id="node-input-dimmer_speed" placeholder="Dimmer Speed">
+		</div>
+    </div>
+
+    <div class="form-row" id="node-input-parameter-transition">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-transition" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-transition" style="width: 70%;">Transition</label>
+    </div>
+
+    <div class="form-row" id="node-input-parameter-duration">
+		<label for="node-input-duration"><i class="icon-tag"></i> Transition duration</label>
+		<input type="text" id="node-input-duration" placeholder="Transition duration">
+	</div>
+
+</script>
+
+<script type="text/x-red" data-help-name="prolights out">
+    <p>Prolights node</p>
+	<pre>
+	payload structure:
+	LUMIPAR12UTRI/LUMIPAR7UTRI:
+	{
+	    "device_type": "LUMIPAR12UTRI",
+	    "channels": "3channels",
+	    "address_start": "1",
+		"red":"0",
+		"green":"0",
+		"blue":"0",
+		"color":"",
+		"strobe":"0",
+		"program":""
+		"dimmer":"0",
+		"dimmer_speed":"0",
+	}
+	LUMIPAR7UTRI:
+	{
+	    "device_type": "LUMIPAR7UTRI",
+	    "channels": "3channels",
+	    "address_start": "1",
+		"red":"0",
+		"green":"0",
+		"blue":"0",
+		"color":"",
+		"strobe":"0",
+		"program":""
+		"dimmer":"0",
+		"dimmer_speed":"0",
+	}
+    LUMIPAR12UQPRO:
+    {
+        "device_type": "LUMIPAR12UQPRO",
+        "channels": "4channels",
+        "address_start": "1",
+        "red":"0",
+        "green":"0",
+        "blue":"0",
+        "white":"0",
+        "color":"",
+        "strobe":"0",
+        "program":""
+        "dimmer":"0",
+        "dimmer_speed":"0"
+    }
+    LUMIPAR12UAW:
+    {
+        "device_type": "LUMIPAR12UAW",
+        "channels": "3channels",
+        "address_start": "1",
+        "amber":"0",
+        "cold_white":"0",
+        "warm_white":"0",
+        "strobe":"0",
+        "program":""
+        "dimmer":"0",
+        "dimmer_speed":"0"
+    }
+    PIXIEWASH:
+    {
+        "device_type": "PIXIEWASH",
+        "channels": "13channels",
+        "address_start": "1",
+        "pan":"0",
+        "pan_fine":"0",
+        "tilt":"0",
+        "tilt_fine":"0",
+        "pan_tilt_speed":"0",
+        "special_function": "0"
+        "dimmer":"0",
+        "shutter":"0",
+        "red":"0",
+		"green":"0",
+		"blue":"0",
+		"white":"0",
+		"color_function":"0",
+		"color":"",
+		"zoom":"0",
+        "dimmer_speed":"0"
+    }
+	</pre>
+</script>
